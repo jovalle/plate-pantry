@@ -24,10 +24,10 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       "img-src 'self' data:",
-      `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ''}`,
+      `script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com${isDevelopment ? " 'unsafe-eval'" : ''}`,
       "style-src 'self' 'unsafe-inline'",
       "font-src 'self'",
-      "connect-src 'self'",
+      "connect-src 'self' https://cloudflareinsights.com",
       "base-uri 'self'",
       "form-action 'self'",
       "frame-ancestors 'none'",

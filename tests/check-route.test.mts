@@ -60,3 +60,39 @@ test('records successful API checks as public aggregate stats', async (context) 
   assert.equal(persisted['ABC 123'].status, 'available');
   assert.equal(persisted['ABC 123'].message, 'Available when checked with NY DMV.');
 });
+
+test('coalesces repeated edge attempts with the same request ID', async () => {
+  let backendRequests = 0;
+  let recordedLookups = 0;
+  const POST = createCheckHandler({
+    backendUrl: new URL('http://backend.test/api/check'),
+    fetchBackend: async () => {
+      backendRequests += 1;
+      return Response.json({
+        plate: 'NYK IN 5',
+        status: 'unavailable',
+        message: 'Not available according to NY DMV.',
+        checkedAt: '2026-08-11T00:00:00.000Z',
+      });
+    },
+    recordLookup: async (plate, result) => {
+      recordedLookups += 1;
+      return { plate, lookupCount: recordedLookups, ...result };
+    },
+  });
+  const request = () =>
+    new Request('http://localhost/api/check', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-plate-pantry-request-id': '3e8ca6c5-e342-4e0b-9a42-bf1f8d84c7de',
+      },
+      body: JSON.stringify({ plate: 'NYK IN 5' }),
+    });
+
+  const [first, retry] = await Promise.all([POST(request()), POST(request())]);
+
+  assert.deepEqual(await first.json(), await retry.json());
+  assert.equal(backendRequests, 1);
+  assert.equal(recordedLookups, 1);
+});

@@ -66,6 +66,8 @@ test('serves hardened document headers from Next.js', async () => {
   assert.match(config, /Strict-Transport-Security/);
   assert.match(config, /X-Content-Type-Options/);
   assert.match(config, /X-Frame-Options/);
+  assert.match(config, /https:\/\/static\.cloudflareinsights\.com/);
+  assert.match(config, /https:\/\/cloudflareinsights\.com/);
 });
 
 test('keeps plate entry accessible and renders supplied artwork', async () => {

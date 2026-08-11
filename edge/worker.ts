@@ -1,6 +1,7 @@
 const ORIGIN = 'https://plate-pantry-origin.jayro.dev';
 const CURRENT_PATH = '/plate-pantry';
 const LEGACY_PATH = '/nypl8';
+const CHECK_PATH = `${CURRENT_PATH}/api/check`;
 
 export type OriginFetch = (request: Request) => Promise<Response>;
 
@@ -26,10 +27,22 @@ export function createEdgeHandler(originFetch: OriginFetch = fetch) {
     const forwardedRequest = new Request(originUrl, request);
     forwardedRequest.headers.set('x-forwarded-host', incomingUrl.host);
     forwardedRequest.headers.set('x-forwarded-proto', incomingUrl.protocol.slice(0, -1));
+    if (incomingUrl.pathname === CHECK_PATH && request.method === 'POST') {
+      forwardedRequest.headers.set('x-plate-pantry-request-id', crypto.randomUUID());
+    }
 
-    const originResponse = await originFetch(forwardedRequest);
+    const retryRequest = forwardedRequest.clone();
+    let originResponse = await originFetch(forwardedRequest);
+    let retryCount = 0;
+    if (originResponse.status === 502) {
+      await originResponse.body?.cancel();
+      originResponse = await originFetch(retryRequest);
+      retryCount = 1;
+    }
+
     const response = new Response(originResponse.body, originResponse);
     response.headers.set('x-plate-pantry-edge-relay', 'cloudflare-worker');
+    if (retryCount) response.headers.set('x-plate-pantry-edge-retry', String(retryCount));
     return response;
   };
 }
