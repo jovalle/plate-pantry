@@ -23,6 +23,8 @@ type StatsFile = Record<string, Omit<PublicPlateStats, 'plate'>>;
 const EMPTY_HEADERS = { 'cache-control': 'no-store' } as const;
 export { EMPTY_HEADERS as PLATE_STATS_HEADERS };
 
+const DEFAULT_MAX_ENTRIES = 10_000;
+
 function cleanTimestamp(value: unknown): string | undefined {
   if (typeof value !== 'string' || value.length > 40 || Number.isNaN(Date.parse(value))) {
     return undefined;
@@ -62,9 +64,12 @@ function sanitizeStatsFile(input: unknown): StatsFile {
 
 export function createPlateStatsStore(
   directory = process.env.PLATE_PANTRY_STATS_DIR ?? process.env.NYPL8_DATA_DIR,
+  maxEntries = Number(process.env.PLATE_PANTRY_MAX_STATS_ENTRIES ?? DEFAULT_MAX_ENTRIES),
 ) {
   const dataDir = directory ? resolve(directory) : join(process.cwd(), 'data');
   const statsFile = join(dataDir, 'plate-stats.json');
+  const effectiveMax =
+    Number.isFinite(maxEntries) && maxEntries > 0 ? maxEntries : DEFAULT_MAX_ENTRIES;
   let writeQueue: Promise<unknown> = Promise.resolve();
 
   async function readAll(): Promise<StatsFile> {
@@ -109,6 +114,22 @@ export function createPlateStatsStore(
         checkedAt,
       };
       allStats[plate] = updated;
+
+      const keys = Object.keys(allStats);
+      if (keys.length > effectiveMax) {
+        keys.sort((a, b) => {
+          const countDiff = allStats[a].lookupCount - allStats[b].lookupCount;
+          if (countDiff !== 0) return countDiff;
+          const timeA = allStats[a].checkedAt ? Date.parse(allStats[a].checkedAt) : 0;
+          const timeB = allStats[b].checkedAt ? Date.parse(allStats[b].checkedAt) : 0;
+          return timeA - timeB;
+        });
+        const toEvict = keys.length - effectiveMax;
+        for (let i = 0; i < toEvict; i++) {
+          delete allStats[keys[i]];
+        }
+      }
+
       await writeAll(allStats);
       return { plate, ...updated };
     });

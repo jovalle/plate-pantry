@@ -1,10 +1,19 @@
-const siteUrl = new URL(process.env.PLATE_PANTRY_VERIFY_URL ?? 'https://jayro.dev/plate-pantry');
+const defaultUrl = process.env.PLATE_PANTRY_PUBLIC_ORIGIN
+  ? `${process.env.PLATE_PANTRY_PUBLIC_ORIGIN.replace(/\/$/, '')}/plate-pantry`
+  : 'https://jayro.dev/plate-pantry';
+const siteUrl = new URL(process.env.PLATE_PANTRY_VERIFY_URL ?? defaultUrl);
 const verifyEdge = process.env.PLATE_PANTRY_VERIFY_EDGE !== '0';
 const expectedRevision = process.env.EXPECTED_REVISION;
+const expectedSsrOrigin = process.env.EXPECTED_SSR_ORIGIN;
 const attempts = Number(process.env.VERIFY_ATTEMPTS ?? 36);
 
 async function verify() {
+  const headers = process.env.PLATE_PANTRY_ORIGIN_SECRET
+    ? { 'x-plate-pantry-origin-secret': process.env.PLATE_PANTRY_ORIGIN_SECRET }
+    : {};
+
   const page = await fetch(siteUrl, {
+    headers,
     cache: 'no-store',
     redirect: 'manual',
     signal: AbortSignal.timeout(15_000),
@@ -16,6 +25,11 @@ async function verify() {
   if (!page.headers.get('x-plate-pantry-ssr-origin')) {
     throw new Error('origin identity header is missing');
   }
+  if (expectedSsrOrigin && page.headers.get('x-plate-pantry-ssr-origin') !== expectedSsrOrigin) {
+    throw new Error(
+      `expected SSR origin ${expectedSsrOrigin}, got ${page.headers.get('x-plate-pantry-ssr-origin')}`,
+    );
+  }
   if (expectedRevision && page.headers.get('x-plate-pantry-revision') !== expectedRevision) {
     throw new Error('the expected revision is not live yet');
   }
@@ -25,6 +39,7 @@ async function verify() {
 
   const statsUrl = new URL(`${siteUrl.pathname}/api/stats?plate=NYK%20IN%205`, siteUrl);
   const stats = await fetch(statsUrl, {
+    headers,
     cache: 'no-store',
     signal: AbortSignal.timeout(15_000),
   });

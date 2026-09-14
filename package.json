@@ -23,7 +23,7 @@
     "test:browser": "playwright test",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run build && npm test",
     "ci:test": "npm run check && npm run test:browser",
-    "deploy:origin": "node scripts/deploy-origin.mjs",
+    "deploy:origin": "docker compose pull && docker compose up -d",
     "deploy:edge": "wrangler deploy",
     "verify:production": "node scripts/verify-production.mjs",
     "assets:optimize": "node scripts/optimize-assets.mjs"

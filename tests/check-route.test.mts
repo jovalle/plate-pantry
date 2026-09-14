@@ -96,3 +96,50 @@ test('coalesces repeated edge attempts with the same request ID', async () => {
   assert.equal(backendRequests, 1);
   assert.equal(recordedLookups, 1);
 });
+
+test('rate limits requests exceeding the allowed threshold per IP', async () => {
+  let backendRequests = 0;
+  const POST = createCheckHandler({
+    backendUrl: new URL('http://backend.test/api/check'),
+    fetchBackend: async () => {
+      backendRequests += 1;
+      return Response.json({
+        plate: 'TEST',
+        status: 'available',
+        message: 'Available.',
+        checkedAt: '2026-08-11T00:00:00.000Z',
+      });
+    },
+    recordLookup: async (plate, result) => ({ plate, lookupCount: 1, ...result }),
+    rateLimitMaxRequests: 2,
+    rateLimitWindowMs: 60_000,
+  });
+
+  const request = (ip: string) =>
+    new Request('http://localhost/api/check', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'cf-connecting-ip': ip,
+      },
+      body: JSON.stringify({ plate: 'TEST' }),
+    });
+
+  const res1 = await POST(request('198.51.100.1'));
+  assert.equal(res1.status, 200);
+
+  const res2 = await POST(request('198.51.100.1'));
+  assert.equal(res2.status, 200);
+
+  const res3 = await POST(request('198.51.100.1'));
+  assert.equal(res3.status, 429);
+  assert.equal(res3.headers.has('retry-after'), true);
+  const body3 = (await res3.json()) as { status: string; message: string };
+  assert.equal(body3.status, 'error');
+  assert.match(body3.message, /Too many/);
+
+  // Different IP is not blocked
+  const resOther = await POST(request('198.51.100.2'));
+  assert.equal(resOther.status, 200);
+  assert.equal(backendRequests, 3);
+});

@@ -67,3 +67,17 @@ test('does not claim unrelated portfolio paths', async () => {
   const response = await handler(new Request('https://jayro.dev/about'));
   assert.equal(response.status, 404);
 });
+
+test('forwards the origin secret header when configured', async () => {
+  let forwarded: Request | undefined;
+  const handler = createEdgeHandler({
+    originFetch: async (req) => {
+      forwarded = req;
+      return new Response('ok', { status: 200 });
+    },
+    originSecret: 'test-secret-12345',
+  });
+
+  await handler(new Request('https://jayro.dev/plate-pantry/api/stats?plate=ABC'));
+  assert.equal(forwarded?.headers.get('x-plate-pantry-origin-secret'), 'test-secret-12345');
+});

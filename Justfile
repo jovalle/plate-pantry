@@ -44,3 +44,21 @@ check:
 # Start the same gated production release that runs automatically from main.
 publish:
   gh workflow run ci.yml --ref main
+
+# Deploy the origin container to a remote Docker host via SSH (defaults to nexus).
+deploy-origin host="nexus":
+  DOCKER_HOST="ssh://{{host}}" docker compose pull
+  DOCKER_HOST="ssh://{{host}}" docker compose up -d --remove-orphans
+
+# Build the production container locally.
+docker-build:
+  docker build -t plate-pantry:latest .
+
+# Run the production container stack.
+docker-up:
+  docker compose up -d
+
+# Stop the production container stack.
+docker-down:
+  docker compose down
+

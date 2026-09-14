@@ -107,3 +107,10 @@ test('keeps plate entry accessible and renders supplied artwork', async () => {
   assert.equal(artwork.data[3], 0, 'plate artwork corners should be transparent');
   assert.equal(centerAlpha, 255, 'the physical plate should remain opaque');
 });
+
+test('enforces origin secret when configured via proxy middleware', async () => {
+  const proxyCode = await read('proxy.ts');
+  assert.match(proxyCode, /PLATE_PANTRY_ORIGIN_SECRET/);
+  assert.match(proxyCode, /x-plate-pantry-origin-secret/);
+  assert.match(proxyCode, /Direct origin access is forbidden/);
+});

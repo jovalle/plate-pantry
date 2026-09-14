@@ -42,7 +42,10 @@ yarn-error.log*
 
 # env files and local secrets (never commit)
 .env*
+!.env.example
 .dev.vars*
+compose.override.*
+docker-compose.override.*
 
 # typescript
 next-env.d.ts

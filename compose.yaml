@@ -1,0 +1,38 @@
+services:
+  plate-pantry:
+    image: ${PLATE_PANTRY_IMAGE:-ghcr.io/jovalle/plate-pantry:${IMAGE_TAG:-latest}}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ${CONTAINER_NAME:-plate-pantry}
+    restart: unless-stopped
+    ports:
+      - '${PORT:-5360}:5360'
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=5360
+      - DMV_BACKEND_PORT=8080
+      - DMV_PROXY_REQUIRED=${DMV_PROXY_REQUIRED:-0}
+      - DMV_PROXY_URL=${DMV_PROXY_URL:-}
+      - NEXT_PUBLIC_PLATE_PANTRY_BASE_PATH=${NEXT_PUBLIC_PLATE_PANTRY_BASE_PATH:-/plate-pantry}
+      - PLATE_PANTRY_PUBLIC_ORIGIN=${PLATE_PANTRY_PUBLIC_ORIGIN:-http://localhost:5360}
+      - PLATE_PANTRY_SSR_ORIGIN=${PLATE_PANTRY_SSR_ORIGIN:-plate-pantry}
+      - PLATE_PANTRY_STATS_DIR=/data
+      - PLATE_PANTRY_NO_OPEN=1
+      - PLATE_PANTRY_ORIGIN_SECRET=${PLATE_PANTRY_ORIGIN_SECRET:-}
+      - SOURCE_COMMIT=${IMAGE_TAG:-unknown}
+    volumes:
+      - ${PLATE_PANTRY_DATA_DIR:-./data}:/data
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:5360/plate-pantry').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
