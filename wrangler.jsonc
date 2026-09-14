@@ -3,24 +3,19 @@
   "name": "plate-pantry-edge",
   "main": "edge/worker.ts",
   "compatibility_date": "2026-08-02",
-  "workers_dev": true,
+  "workers_dev": false,
   "preview_urls": false,
+  "routes": [
+    {
+      "pattern": "jayro.dev/plate-pantry*",
+      "zone_name": "jayro.dev",
+    },
+    {
+      "pattern": "jayro.dev/nypl8*",
+      "zone_name": "jayro.dev",
+    },
+  ],
   "observability": {
     "enabled": true,
-  },
-  "env": {
-    "production": {
-      "workers_dev": false,
-      "routes": [
-        {
-          "pattern": "jayro.dev/plate-pantry*",
-          "zone_name": "jayro.dev",
-        },
-        {
-          "pattern": "jayro.dev/nypl8*",
-          "zone_name": "jayro.dev",
-        },
-      ],
-    },
   },
 }
