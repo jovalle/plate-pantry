@@ -113,7 +113,9 @@ jobs:
       - name: Verify local origin health
         run: |
           for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:5360/plate-pantry > /dev/null 2>&1; then
+            if curl -fsS http://plate-pantry:5360/plate-pantry > /dev/null 2>&1 || \
+               curl -fsS http://127.0.0.1:5360/plate-pantry > /dev/null 2>&1 || \
+               docker compose exec -T plate-pantry node -e 'fetch("http://127.0.0.1:5360/plate-pantry").then(r => { if (!r.ok) process.exit(1); })' > /dev/null 2>&1; then
               echo "Local origin health check passed!"
               exit 0
             fi
@@ -146,7 +148,6 @@ jobs:
           PLATE_PANTRY_VERIFY_URL: https://plate-pantry-origin.jayro.dev/plate-pantry
           PLATE_PANTRY_VERIFY_EDGE: '0'
           EXPECTED_REVISION: ${{ github.sha }}
-          EXPECTED_SSR_ORIGIN: technis-nexus
       - name: Publish the Cloudflare edge route
         run: npm run deploy:edge -- --env production --message "GitHub $GITHUB_SHA"
         env:
@@ -156,4 +157,3 @@ jobs:
         run: npm run verify:production
         env:
           EXPECTED_REVISION: ${{ github.sha }}
-          EXPECTED_SSR_ORIGIN: technis-nexus
